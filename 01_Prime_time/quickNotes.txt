@@ -1,0 +1,10 @@
+1. do not use sieve of eratosthenes for finding primes. if client sends a v huge number server will crash trying to allocate that big array. its only good for small numbers and a lot of reads. Use the division test till square root of the number instead
+
+2. in Go nothing is truly empty. so the json.Marshal wont really throw error if either of the fields are missing. it rather fills with empty values, (0 for numbers and "" for strings). hence using pointers as the struct fields. now a pointer can be nil which tells us that the field was missing
+
+3. json.Unmarshal takes in binary array and a struct instance's address and returns error
+4. json.Marshal reverse. takes in struct and returns binary array, error
+
+5. scanner.Scan() this function blocks (goroutine doesnt wake up unless and until it either receives a \n or eof). returns true if \n, false for eof
+
+6. in a tcp byte stream, entering backspace doesnt delete chars but even this is sent as \b to the server. the json.Unmarshal throws error trying to unserialize this data
