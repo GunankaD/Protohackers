@@ -9,7 +9,7 @@ import (
 
 func main() {
 	// 1. Connect to the server
-	conn, err := net.Dial("tcp", "localhost:8080")
+	conn, err := net.Dial("tcp", "107.20.50.210:8080")
 	if err != nil {
 		log.Fatal("Error connecting:", err)
 	}
@@ -24,7 +24,7 @@ func main() {
 	}
 
 	queries := [][2]int32{
-		{12988, 40960},
+		{12345, 12347},
 	}
 
 	// 3. Send Inserts

@@ -37,15 +37,20 @@ type History struct {
 
 func handleClients(conn net.Conn) {
 	defer conn.Close()
+	defer log.Println("Closing a client connection")
+	log.Println("Serving a new client")
 
 	buffer := make([]byte, 9)
 	var history []History
+	var queryNumber int64
 
 	for {
 		_, err := io.ReadFull(conn, buffer)
 		if err != nil {
 			return
 		}
+		queryNumber ++
+		log.Printf("Client's Query Count: %v\n", queryNumber)
 
 		var queryType string
 		var first,  second int32
@@ -59,12 +64,16 @@ func handleClients(conn net.Conn) {
 		}
 
 		if queryType == "I" {
+			log.Printf("%v. Insert Price %v at Timestamp %v\n", queryNumber, second, first)
+
 			newData := History{
 				Timestamp : first,
 				Price : second,
 			}
 			history = append(history, newData)
 		} else {
+			log.Printf("%v. Query Mean from %v till %v\n", queryNumber, second, first)
+
 			var mean, count, sum int64
 
 			for _, data := range history {
@@ -76,8 +85,12 @@ func handleClients(conn net.Conn) {
 
 			if count != 0 {
 				mean = sum / count
+				log.Printf("%v. Mean: %v\n", queryNumber, mean)
+
 				binary.Write(conn, binary.BigEndian, int32(mean))
 			} else {
+				log.Printf("%v. Mean: %v\n", queryNumber, 0)
+				
 				binary.Write(conn, binary.BigEndian, int32(count))
 			}
 		}
