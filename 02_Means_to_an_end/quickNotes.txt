@@ -1,0 +1,13 @@
+1. slice is a vector, var slice []type. if the [] is empty, then its dynamic array aka slice/vector
+2. if [] is not empty, then its a normal array
+
+
+3.the io.ReadFull's second argument expects a slice. not array, hence to create a slice with fixed length, we do 
+make([]type, size). initially it has size number of 0s/default value inside it
+
+4. in Go, [x]type1 is a completely different dtype compared to [y]type1. though both are of type1, the size (x and y) are baked into the type. hence most libraries expect slices. make([]type1, x) and make([]type1, y) are still of type1.
+
+5. 'I' by default is Rune type and is of int32 (4 bytes) not 1 byte. write like this byte('I')
+
+6. binary.Read = best to read binary data to integer
+7. binary.Write = best to write binary data to connection
