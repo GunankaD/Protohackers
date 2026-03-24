@@ -1,0 +1,83 @@
+1. onboard a client (this is done by writing them a line)
+
+2. inform client about the current members (requires reading map and replying to client)
+
+3. broadcast to all. (3 situations. 1 when a person joins, 2 when a person messages, 3, when a person leaves. we need to lock mutex in all 3 scenarios but we only update map in 1st and 3rd scenario. 2nd scenario is just reading/iterating the map)
+
+4. enforce strict rules and close the connection if any of the rule is violated . username.len < 17 chars, message.len < 1001 chars, allow duplicate usernames (i dont see any issue handling this  since we are broadcasting to everyone. we need to check the value (conn) in map to ensure we are not sending the message back to the sender.)
+
+
+
+so with this i think we need, 
+
+1. AddUser (name, conn) (writes to map and calls the broadcast function inside it)
+
+2. Broadcast (senderConn, message ), loops through map and sends to everyone other than senderConn. We call this inside other 2 functions and inside the for loop while scanning.
+
+3. RemoveUser (removedConn) (removes from map and calls Broadcast) we will call this function in the else body of scanner.Scan (since this happens AFTER they have set their name so cant really defer because theres a scenario where client can disconnect before setting their name)
+
+
+
+main function sets up handleClient function and inside handleClient functino we will call these 3 functions. and also another suggestion, we switch the key value in our hashmap, we should map conn -> name since now names can be duplicate
+
+    QUESTION: i dont understand. why are we doing &Room and why are we not initializing the mutex
+    
+1. Why &Room? (The Shared State)
+In Go, everything is passed by value (copied) by default. If you initialized the room normally like chatRoom := Room{...} and passed it to your goroutine go handleClients(conn, chatRoom), Go would create a complete, independent copy of the room for every single client that connects.
+
+Alice would get her own copy of the map, and Bob would get his own copy of the map. When Alice sends a message, she would only be talking to her copy, and Bob would never hear it.
+
+By using &Room, we are creating a pointer to the room. We are telling Go: "Don't copy the room. Just give this goroutine the memory address of the one, single, central room." This ensures every client is locking the exact same mutex and reading the exact same map.
+
+2. Why are we not initializing the Mutex? (The "Zero Value")
+This is one of the coolest conveniences in Go compared to C++.
+
+In Go, if you declare a variable but don't assign it a value, Go automatically gives it a useful default called a "zero value" (e.g., 0 for ints, "" for strings, false for booleans).
+
+The creators of Go specifically designed sync.Mutex so that its "zero value" is an unlocked mutex ready to be used immediately. You literally don't have to initialize it. As long as the struct exists in memory, the mutex is ready to go.
+
+Why did we have to initialize the map, then?
+The zero value for a map is nil. A nil map can be read from, but if you try to write to a nil map, the program will panic and crash. That's why we have to explicitly use make(map[net.Conn]string) to allocate the memory for it, but we can completely ignore the mutex.
+
+    QUESTION: i still dont get it. why does go allocate memory for other dtypes but not for map?
+
+It comes down to Value Types vs. Pointers.
+
+In C++, if you say std::map<int, int> myMap;, the compiler automatically calls the constructor, which goes ahead and allocates the internal tree or hash table for you.
+
+Go takes a much stricter, more explicit approach to memory.
+
+1. sync.Mutex is just a plain Struct (Value Type)
+Under the hood, sync.Mutex is literally just a tiny struct containing two integers:
+
+Go
+type Mutex struct {
+	state int32
+	sema  uint32
+}
+When you declare var mu sync.Mutex inside your Room, Go allocates exactly 8 bytes of memory for those two integers right there. Because Go's rule is "everything gets a zero value," those integers are set to 0. For the Go runtime, a state of 0 means "unlocked." It doesn't need to do any complex heap allocation; the memory is just there and ready.
+
+2. A map is actually a Pointer
+Here is the big secret: in Go, the types map, slice, and chan (channels) are actually pointers in disguise.
+
+When you declare var users map[net.Conn]string, you are not allocating a hash table. You are allocating a tiny, 8-byte pointer that will eventually point to a complex hash table on the heap.
+
+Because it's just a pointer, its default "zero value" is nil (null).
+
+Reading from a nil map is fine (Go safely returns the zero value, like an empty string).
+
+Writing to a nil map (users[conn] = "alice") is exactly like trying to dereference a null pointer in C++. It causes an immediate crash (panic).
+
+3. Why did the Go creators do this?
+Performance and Control. Maps are heavy, dynamic data structures that require heap allocation and garbage collection. The Go creators decided that the language should never secretly allocate heavy data structures behind your back just because you declared a variable.
+
+If you want the heavy hash table, you have to explicitly ask the runtime to build it for you by calling make().
+
+Go
+// 1. Allocates a nil pointer. No hash table exists yet.
+var users map[net.Conn]string 
+
+// 2. make() goes to the heap, builds the hash table buckets, 
+// and makes 'users' point to it.
+users = make(map[net.Conn]string) 
+So, Mutex gets its memory automatically because it's just a couple of flat integers. map doesn't, because it's a pointer waiting for you to explicitly request a heavy heap allocation.
