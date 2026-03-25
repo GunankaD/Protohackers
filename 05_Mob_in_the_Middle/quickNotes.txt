@@ -1,0 +1,4 @@
+1. when we compile a regex string, os creates a complex state machine which is then used to validate strings.
+hence we should create regex only once in global and not inside for loops
+
+2. if a waitGroup goes negative server will crash!
