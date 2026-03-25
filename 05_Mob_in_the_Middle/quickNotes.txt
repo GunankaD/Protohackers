@@ -2,3 +2,5 @@
 hence we should create regex only once in global and not inside for loops
 
 2. if a waitGroup goes negative server will crash!
+
+3. stupid shit the scanner from bufio.NewScanner() will consider both \n and eof as valid and return a string. due to this our proxy was taking in name+eof from client and sending name+\n to the server
