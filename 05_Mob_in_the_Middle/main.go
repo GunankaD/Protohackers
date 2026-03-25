@@ -2,11 +2,12 @@ package main
 
 import (
 	"bufio"
+	"io"
 	"log"
 	"net"
+	"regexp"
 	"strings"
 	"sync"
-	"regexp"
 )
 
 var boguscoinRegex = regexp.MustCompile(`^7[a-zA-Z0-9]{25,34}$`)
@@ -37,7 +38,7 @@ func main(){
 func handleClient(downConn net.Conn){
 	defer downConn.Close()
 
-	upProtocol, upIp, upPort := "tcp", "chat.protohackers.com", "16962"
+	upProtocol, upIp, upPort := "tcp", "chat.protohackers.com", "16963"
 	upConn, err := net.Dial(upProtocol, upIp + ":" + upPort)
 	if err != nil {
 		log.Println(err)
@@ -58,11 +59,20 @@ func repeater(dest net.Conn, src net.Conn, wg *sync.WaitGroup){
 	defer dest.Close()
 	defer src.Close()
 
-	scanner := bufio.NewScanner(src)
+	reader := bufio.NewReader(src)
 	tonysAddress := "7YWHMfk9JZe0LM0g1ZauHuiSxhI"
 
-	for scanner.Scan() {
-		req := scanner.Text()
+	for {
+		req, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return
+		}
+
+		var suffix string
+		if err != io.EOF {
+			req = req[:len(req)-1]
+			suffix = "\n"
+		}
 
 		// search and replace the boguscoin
 		words := strings.Split(req, " ")
@@ -73,7 +83,11 @@ func repeater(dest net.Conn, src net.Conn, wg *sync.WaitGroup){
 			}
 		}
 
-		modifiedRes := strings.Join(words, " ")
-		dest.Write([]byte(modifiedRes + "\n"))
+		modifiedRes := strings.Join(words, " ") + suffix
+		dest.Write([]byte(modifiedRes))
+
+		if err == io.EOF {
+			return
+		}
 	}
 }
